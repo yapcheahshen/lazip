@@ -21,6 +21,13 @@ JSZip uses the library pako released under the MIT license :
 https://github.com/nodeca/pako/blob/master/LICENSE
 
 2021/09/20 lazy fetch from remote zip
+hand patched, don't want to install devDependencies.
+https://github.com/yapcheahshen/lazip
+
+set options.lazyfetch to enable on demand loading.
+only centralDirectory is loaded when open.
+
+
 
 */
 
@@ -11342,5 +11349,5 @@ module.exports = typeof setImmediate === 'function' ? setImmediate :
 },{}]},{},[10])(10)
 });
 });
-
-export default jszip;
+//export default jszip;
+if (typeof window!=='undefined') window.JSZip=jszip;
