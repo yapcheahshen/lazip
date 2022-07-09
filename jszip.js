@@ -744,11 +744,12 @@ var generateDataDescriptors = function (streamInfo) {
  * @param {String} comment the comment to use.
  * @param {String} platform the platform to use, "UNIX" or "DOS".
  * @param {Function} encodeFileName the function to encode file names and comments.
+ * @param {number} allow hidden section (Redbean)
  */
-function ZipFileWorker(streamFiles, comment, platform, encodeFileName) {
+function ZipFileWorker(streamFiles, comment, platform, encodeFileName, firstFileOffset) {
     GenericWorker.call(this, "ZipFileWorker");
     // The number of bytes written so far. This doesn't count accumulated chunks.
-    this.bytesWritten = 0;
+    this.bytesWritten = firstFileOffset;
     // The comment of the zip file
     this.zipComment = comment;
     // The platform "generating" the zip file.
@@ -767,14 +768,14 @@ function ZipFileWorker(streamFiles, comment, platform, encodeFileName) {
     // The list of generated directory records.
     this.dirRecords = [];
     // The offset (in bytes) from the beginning of the zip file for the current source.
-    this.currentSourceOffset = 0;
+    this.currentSourceOffset = 0 ; 
     // The total number of entries in this zip file.
     this.entriesCount = 0;
     // the name of the file currently being added, null when handling the end of the zip file.
     // Used for the emitted metadata.
     this.currentFile = null;
 
-
+    this.firstFileOffset = firstFileOffset;
 
     this._sources = [];
 }
@@ -809,7 +810,7 @@ ZipFileWorker.prototype.push = function (chunk) {
  * @param {Object} streamInfo the streamInfo object from the new source.
  */
 ZipFileWorker.prototype.openedSource = function (streamInfo) {
-    this.currentSourceOffset = this.bytesWritten;
+    this.currentSourceOffset = this.bytesWritten ;
     this.currentFile = streamInfo['file'].name;
 
     var streamedContent = this.streamFiles && !streamInfo['file'].dir;
@@ -835,7 +836,6 @@ ZipFileWorker.prototype.closedSource = function (streamInfo) {
     this.accumulate = false;
     var streamedContent = this.streamFiles && !streamInfo['file'].dir;
     var record = generateZipParts(streamInfo, streamedContent, true, this.currentSourceOffset, this.zipPlatform, this.encodeFileName);
-
     this.dirRecords.push(record.dirRecord);
     if(streamedContent) {
         // after the streamed file, we put data descriptors
@@ -869,7 +869,7 @@ ZipFileWorker.prototype.flush = function () {
             meta : {percent:100}
         });
     }
-    var centralDirLength = this.bytesWritten - localDirLength;
+    var centralDirLength = this.bytesWritten - localDirLength ;
 
     var dirEnd = generateCentralDirectoryEnd(this.dirRecords.length, centralDirLength, localDirLength, this.zipComment, this.encodeFileName);
 
@@ -994,7 +994,7 @@ var getCompression = function (fileCompression, zipCompression) {
  */
 exports.generateWorker = function (zip, options, comment) {
 
-    var zipFileWorker = new ZipFileWorker(options.streamFiles, comment, options.platform, options.encodeFileName);
+    var zipFileWorker = new ZipFileWorker(options.streamFiles, comment, options.platform, options.encodeFileName, options.firstFileOffset);
     var entriesCount = 0;
     try {
 
@@ -1149,6 +1149,7 @@ module.exports = function (data, options) {
             //zip.files is empty now,
             //when a file compressed data is downloaded
             //new item will be added to zip.files
+            zip.firstFileOffset =zipEntries.files[0].localHeaderOffset ; //normal zip start from 0, redbean is non-zero
           } else {
             var files = zipEntries.files;
             for (var i = 0; i < files.length; i++) {
@@ -1165,6 +1166,7 @@ module.exports = function (data, options) {
               });
             }
           }
+          zip.firstFileOffset=zipEntries.files[0].localHeaderOffset;
           if (zipEntries.zipComment.length) {
               zip.comment = zipEntries.zipComment;
           }
@@ -11349,5 +11351,5 @@ module.exports = typeof setImmediate === 'function' ? setImmediate :
 },{}]},{},[10])(10)
 });
 });
-//export default jszip;
+if (typeof module !=='undefined') module.exports=jszip;
 if (typeof window!=='undefined') window.JSZip=jszip;
